@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmallCaps DB — U.S. Small Cap Stock Screener</title>
+  <meta name="description" content="Real-time database of U.S. small cap stocks under $100M market cap. Filter by EV/FCF, P/E, FCF margin, sector, and risk flags. Powered by SEC filings and daily yfinance pricing." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ── SIDEBAR ─────────────────────────────────────────────────────────── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="2,22 8,14 14,18 20,8 30,10" stroke="#00ff88" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="8"  cy="14" r="2" fill="#00ff88"/>
+          <circle cx="14" cy="18" r="2" fill="#00ff88"/>
+          <circle cx="20" cy="8"  r="2" fill="#00ff88"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <span class="logo-brand">SmallCaps</span>
+        <span class="logo-sub">DB</span>
+      </div>
+    </div>
+    <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+
+  <nav class="sidebar-nav">
+    <a class="nav-item active" id="nav-screener" onclick="showView('screener')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+      <span>Screener</span>
+    </a>
+    <a class="nav-item" id="nav-dashboard" onclick="showView('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+      <span>Dashboard</span>
+    </a>
+  </nav>
+
+  <!-- Filters Panel -->
+  <div class="filters-panel" id="filtersPanel">
+    <div class="filters-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46 22,3"/></svg>
+      Filters
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Market Cap</label>
+      <div class="filter-row">
+        <input type="number" id="minCap" placeholder="Min ($M)" class="filter-input" />
+        <input type="number" id="maxCap" placeholder="Max ($M)" class="filter-input" />
+      </div>
+      <div class="filter-presets">
+        <button class="preset-btn" onclick="setCapPreset(0, 10)">Micro</button>
+        <button class="preset-btn" onclick="setCapPreset(10, 50)">$10-50M</button>
+        <button class="preset-btn" onclick="setCapPreset(50, 100)">$50-100M</button>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Sector</label>
+      <select id="filterSector" class="filter-select">
+        <option value="">All Sectors</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">EV / FCF</label>
+      <div class="filter-row">
+        <input type="number" id="minEvFcf" placeholder="Min" class="filter-input" />
+        <input type="number" id="maxEvFcf" placeholder="Max" class="filter-input" />
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">P/E Ratio</label>
+      <input type="number" id="maxPE" placeholder="Max P/E" class="filter-input full-width" />
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Min FCF Margin (%)</label>
+      <input type="number" id="minFcfMargin" placeholder="e.g. 5" class="filter-input full-width" />
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">RSI (14)</label>
+      <div class="filter-row">
+        <input type="number" id="rsiMin" placeholder="Min" class="filter-input" />
+        <input type="number" id="rsiMax" placeholder="Max" class="filter-input" />
+      </div>
+      <div class="filter-presets">
+        <button class="preset-btn" onclick="setRSI(0, 30)">Oversold</button>
+        <button class="preset-btn" onclick="setRSI(70, 100)">Overbought</button>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Risk Flags</label>
+      <label class="filter-checkbox">
+        <input type="checkbox" id="filterGoingConcern" />
+        <span>Going Concern Only</span>
+      </label>
+      <label class="filter-checkbox">
+        <input type="checkbox" id="filterNoDilution" />
+        <span>No Dilution (YoY)</span>
+      </label>
+    </div>
+
+    <button class="btn-apply" id="applyFilters" onclick="applyFilters()">
+      Apply Filters
+    </button>
+    <button class="btn-reset" onclick="resetFilters()">Reset All</button>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="update-status" id="updateStatus">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Loading...</span>
+    </div>
+    <button class="btn-update" id="btnUpdate" onclick="triggerUpdate()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/><path d="M3.51,9A9,9,0,0,1,21,12M20.49,15A9,9,0,0,1,3,12"/></svg>
+      Update Prices
+    </button>
+  </div>
+</aside>
+
+<!-- ── MAIN CONTENT ────────────────────────────────────────────────────── -->
+<main class="main-content" id="mainContent">
+
+  <!-- ── SCREENER VIEW ── -->
+  <div id="view-screener" class="view active">
+    <div class="view-header">
+      <div>
+        <h1 class="view-title">U.S. Small Cap Screener</h1>
+        <p class="view-subtitle">
+          <span id="totalCount" class="count-badge">—</span> companies
+          <span class="subtitle-hint">· Updated daily via yfinance × SEC filings</span>
+        </p>
+      </div>
+      <div class="header-actions">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" placeholder="Search ticker or name..." oninput="debounceSearch()" />
+        </div>
+        <button class="btn-export" onclick="exportCSV()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+      </div>
+    </div>
+
+    <!-- Column selector -->
+    <div class="col-selector-bar">
+      <span class="col-selector-label">Columns:</span>
+      <div class="col-chips" id="colChips"></div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-container" id="tableContainer">
+      <div class="loading-state" id="loadingState">
+        <div class="spinner"></div>
+        <p>Loading stocks...</p>
+      </div>
+      <table class="screener-table" id="screenerTable" style="display:none">
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+  <!-- ── DASHBOARD VIEW ── -->
+  <div id="view-dashboard" class="view">
+    <div class="view-header">
+      <div>
+        <h1 class="view-title">Market Dashboard</h1>
+        <p class="view-subtitle">Overview of the small cap universe</p>
+      </div>
+    </div>
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card" id="statTotal">
+        <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+        <div class="stat-body"><div class="stat-value" id="sv-total">—</div><div class="stat-label">Total Companies</div></div>
+      </div>
+      <div class="stat-card" id="statSec">
+        <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg></div>
+        <div class="stat-body"><div class="stat-value" id="sv-sec">—</div><div class="stat-label">With SEC Data</div></div>
+      </div>
+      <div class="stat-card" id="statCap">
+        <div class="stat-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+        <div class="stat-body"><div class="stat-value" id="sv-cap">—</div><div class="stat-label">Combined Market Cap</div></div>
+      </div>
+      <div class="stat-card" id="statUpdate">
+        <div class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg></div>
+        <div class="stat-body"><div class="stat-value" id="sv-update">—</div><div class="stat-label">Last Price Update</div></div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="dash-card">
+        <h3 class="dash-card-title">Sector Distribution</h3>
+        <div class="sector-list" id="sectorList"></div>
+      </div>
+      <div class="dash-card">
+        <h3 class="dash-card-title">Market Cap Breakdown</h3>
+        <div class="cap-breakdown" id="capBreakdown"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── STOCK DETAIL MODAL ──────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+  <div class="modal" id="stockModal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<!-- ── TOAST ───────────────────────────────────────────────────────────── -->
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+</body>
+</html>
