@@ -3,47 +3,66 @@
 <head>
   <meta charset="UTF-8">
   <title>Test Supabase Connection</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: monospace; padding: 20px; background: #080e1a; color: #e2e8f0; }
+    body { font-family: monospace; padding: 20px; background: #080e1a; color: #e2e8f0; line-height: 1.6; }
     .ok { color: #00ff88; }
     .err { color: #ef4444; }
-    pre { background: #111d33; padding: 10px; border-radius: 6px; overflow: auto; }
+    .warn { color: #f59e0b; }
+    pre { background: #111d33; padding: 10px; border-radius: 6px; overflow: auto; font-size: 12px; }
+    #log { max-height: 400px; overflow-y: auto; }
+    .log-line { margin: 2px 0; padding: 2px 0; border-bottom: 1px solid #1e2d47; }
   </style>
 </head>
 <body>
   <h2>Test de conexion a Supabase</h2>
-  <div id="status">Conectando...</div>
-  <h3>Query: stocks con nombre NOT NULL (limit 5)</h3>
-  <pre id="result">Cargando...</pre>
+  <div id="log"></div>
+  <pre id="result">Esperando...</pre>
 
   <script>
-    const SUPABASE_URL = 'https://difumwahbazkoglmtnon.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_ZXMHYB4buYuBFLaboNmECA_zA34o6pI';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    async function test() {
-      try {
-        // Test basico
-        const { data, count, error } = await supabase
-          .from('stocks')
-          .select('*', { count: 'exact' })
-          .not.is('nombre', null)
-          .limit(5);
-
-        if (error) throw error;
-
-        document.getElementById('status').innerHTML = 
-          '<span class="ok">✓ Conexion OK</span> | Count total: ' + (count || 'N/A') + ' | Data devuelta: ' + data.length;
-        
-        document.getElementById('result').textContent = JSON.stringify(data, null, 2);
-      } catch (e) {
-        document.getElementById('status').innerHTML = '<span class="err">✗ Error: ' + e.message + '</span>';
-        document.getElementById('result').textContent = e.stack || e.message;
-      }
+    function log(msg, type) {
+      const div = document.getElementById('log');
+      const line = document.createElement('div');
+      line.className = 'log-line ' + (type || '');
+      line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+      div.appendChild(line);
     }
 
-    test();
+    window.onerror = function(msg, url, line) {
+      log('ERROR GLOBAL: ' + msg + ' (linea ' + line + ')', 'err');
+    };
+
+    log('Script iniciado');
+    log('window.supabase existe? ' + (typeof window.supabase !== 'undefined'));
+
+    if (typeof window.supabase === 'undefined') {
+      log('ERROR: La libreria de Supabase no cargo. Verificar conexion a internet / CDN bloqueado.', 'err');
+    } else {
+      log('Supabase library OK, version: ' + (window.supabase.VERSION || 'unknown'));
+
+      try {
+        const SUPABASE_URL = 'https://difumwahbazkoglmtnon.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_ZXMHYB4buYuBFLaboNmECA_zA34o6pI';
+        log('Creando cliente...');
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        log('Cliente creado OK');
+
+        log('Ejecutando query SELECT * FROM stocks LIMIT 3...');
+        client.from('stocks').select('*').limit(3).then(({data, error}) => {
+          if (error) {
+            log('Query ERROR: ' + error.message, 'err');
+            document.getElementById('result').textContent = JSON.stringify(error, null, 2);
+          } else {
+            log('Query OK, filas devueltas: ' + (data ? data.length : 0), 'ok');
+            document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+          }
+        }).catch(err => {
+          log('Promise catch: ' + err.message, 'err');
+        });
+      } catch (e) {
+        log('EXCEPTION: ' + e.message, 'err');
+      }
+    }
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onload="log('CDN script loaded')" onerror="log('CDN script FAILED to load', 'err')"></script>
 </body>
 </html>
