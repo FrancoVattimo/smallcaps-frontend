@@ -8,7 +8,7 @@ let state = {
   page: 1, perPage: 50, total: 0,
   sortBy: 'market_cap', sortDir: 'desc',
   filters: {}, searchQuery: '',
-  activeColumns: ['ticker','market_cap','ev_fcf','p_e','p_bv','revenue','adj_fcf','fcf_margin','roe','rsi_14','perf_1m','perf_3m','going_concern'],
+  activeColumns: ['ticker','market_cap','p_e','p_bv','revenue','adj_fcf','fcf_margin','roe','rsi_14','perf_1m','sector'],
 };
 
 const ALL_COLUMNS = [
@@ -150,7 +150,7 @@ async function fetchStocks() {
 
   try {
     let query = supabase.from('stocks').select('*', { count: 'exact' })
-      .not('nombre', 'is', null);   // Solo mostrar empresas con datos cargados
+      .not('nombre', 'is', null);
 
     const f = state.filters;
     if (f.minCap)        query = query.gte('market_cap', f.minCap * 1e6);
@@ -175,7 +175,7 @@ async function fetchStocks() {
     query = query.range(from, to);
 
     const { data, count, error } = await query;
-    console.log('DEBUG Supabase response:', { dataLength: data ? data.length : 0, count, error });
+    console.log('DEBUG Supabase:', { dataLength: data ? data.length : 0, count, error });
     if (error) throw error;
     
     state.total = count || 0;
@@ -183,8 +183,9 @@ async function fetchStocks() {
     renderPagination(Math.ceil(state.total / state.perPage));
     document.getElementById('totalCount').textContent = state.total.toLocaleString();
   } catch (e) {
-    console.error('DEBUG Supabase error:', e);
-    showToast('Supabase error: ' + e.message, 'error');
+    console.error('DEBUG fetchStocks error:', e);
+    showToast('Error: ' + e.message, 'error');
+    document.getElementById('loadingState').innerHTML = '<p style="color:var(--red)">Error: ' + e.message + '</p>';
   } finally {
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('screenerTable').style.display = 'table';
@@ -192,26 +193,36 @@ async function fetchStocks() {
 }
 
 function renderTable(stocks) {
-  const cols = ALL_COLUMNS.filter(c => state.activeColumns.includes(c.key) || c.always);
-  const tbody = document.getElementById('tableBody');
+  try {
+    const cols = ALL_COLUMNS.filter(c => state.activeColumns.includes(c.key) || c.always);
+    const tbody = document.getElementById('tableBody');
 
-  if (!stocks || !stocks.length) {
-    tbody.innerHTML = `<tr><td colspan="${cols.length}" style="text-align:center;padding:40px;color:var(--muted)">No stocks match the current filters</td></tr>`;
-    return;
-  }
+    if (!stocks || !stocks.length) {
+      tbody.innerHTML = `<tr><td colspan="${cols.length}" style="text-align:center;padding:40px;color:var(--muted)">No stocks match the current filters</td></tr>`;
+      return;
+    }
 
-  tbody.innerHTML = stocks.map(s => {
-    const cells = cols.map(col => {
-      if (col.key === 'ticker') {
-        return `<td><div class="ticker-cell">
-          <span class="ticker-sym">${s.ticker}</span>
-          <span class="ticker-name" title="${s.nombre || ''}">${s.nombre || ''}</span>
-        </div></td>`;
+    tbody.innerHTML = stocks.map((s, idx) => {
+      try {
+        const cells = cols.map(col => {
+          if (col.key === 'ticker') {
+            return `<td><div class="ticker-cell">
+              <span class="ticker-sym">${s.ticker}</span>
+              <span class="ticker-name" title="${s.nombre || ''}">${s.nombre || ''}</span>
+            </div></td>`;
+          }
+          return `<td>${fmt(s[col.key], col.fmt)}</td>`;
+        });
+        return `<tr onclick="openDetail('${s.ticker}')">${cells.join('')}</tr>`;
+      } catch (rowErr) {
+        console.error('Error rendering row', idx, s.ticker, rowErr);
+        return `<tr><td colspan="${cols.length}" style="color:var(--red)">Error en ${s.ticker}</td></tr>`;
       }
-      return `<td>${fmt(s[col.key], col.fmt)}</td>`;
-    });
-    return `<tr onclick="openDetail('${s.ticker}')">${cells.join('')}</tr>`;
-  }).join('');
+    }).join('');
+  } catch (e) {
+    console.error('renderTable error:', e);
+    document.getElementById('tableBody').innerHTML = `<tr><td colspan="100" style="text-align:center;padding:40px;color:var(--red)">Error al renderizar: ${e.message}</td></tr>`;
+  }
 }
 
 /* ── SORT ── */
