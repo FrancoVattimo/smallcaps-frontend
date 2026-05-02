@@ -1,7 +1,7 @@
 /* ── CONFIG ── */
 const SUPABASE_URL = 'https://difumwahbazkoglmtnon.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ZXMHYB4buYuBFLaboNmECA_zA34o6pI';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ── STATE ── */
 let state = {
@@ -149,7 +149,7 @@ async function fetchStocks() {
   document.getElementById('screenerTable').style.display = 'none';
 
   try {
-    let query = supabase.from('stocks').select('*', { count: 'exact' })
+    let query = db.from('stocks').select('*', { count: 'exact' })
       .not('nombre', 'is', null);
 
     const f = state.filters;
@@ -303,7 +303,7 @@ function debounceSearch() {
 /* ── SECTORS DROPDOWN ── */
 async function loadSectors() {
   try {
-    const { data, error } = await supabase.from('stocks').select('sector');
+    const { data, error } = await db.from('stocks').select('sector');
     if (error) return;
     const counts = {};
     data.forEach(d => {
@@ -325,7 +325,7 @@ async function loadSectors() {
 /* ── STATUS BAR ── */
 async function loadStatus() {
   try {
-    const { data, error } = await supabase.from('update_log').select('timestamp').order('timestamp', { ascending: false }).limit(1);
+    const { data, error } = await db.from('update_log').select('timestamp').order('timestamp', { ascending: false }).limit(1);
     const dot = document.getElementById('statusDot');
     const txt = document.getElementById('statusText');
     if (!error && data && data.length > 0) {
@@ -350,7 +350,7 @@ async function openDetail(ticker) {
   document.getElementById('modalOverlay').classList.add('open');
   document.getElementById('modalContent').innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner" style="margin:0 auto"></div></div>';
   try {
-    const { data: s, error } = await supabase.from('stocks').select('*').eq('ticker', ticker).single();
+    const { data: s, error } = await db.from('stocks').select('*').eq('ticker', ticker).single();
     if (error || !s) throw new Error('Not found');
     renderModal(s);
   } catch(e) {
@@ -426,7 +426,7 @@ function closeModal() {
 /* ── EXPORT CSV ── */
 async function exportCSV() {
   try {
-    let query = supabase.from('stocks').select('*');
+    let query = db.from('stocks').select('*');
     // duplicate filters from state
     const f = state.filters;
     if (f.minCap)        query = query.gte('market_cap', f.minCap * 1e6);
@@ -466,7 +466,7 @@ async function exportCSV() {
 async function loadDashboard() {
   try {
     // To avoid fetching all data, we only fetch necessary columns
-    const { data, error } = await supabase.from('stocks').select('sector, market_cap, net_income');
+    const { data, error } = await db.from('stocks').select('sector, market_cap, net_income');
     if (error) return;
     
     let totalStocks = 0;
@@ -495,7 +495,7 @@ async function loadDashboard() {
     document.getElementById('sv-cap').textContent = `$${(marketCapTotal / 1e9).toFixed(1)}B`;
 
     // Last update
-    const { data: ud } = await supabase.from('update_log').select('timestamp').order('timestamp', { ascending: false }).limit(1);
+    const { data: ud } = await db.from('update_log').select('timestamp').order('timestamp', { ascending: false }).limit(1);
     const upd = ud && ud.length > 0 ? new Date(ud[0].timestamp).toLocaleDateString() : '—';
     document.getElementById('sv-update').textContent = upd;
 
