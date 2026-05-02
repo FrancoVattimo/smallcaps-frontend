@@ -1,6 +1,31 @@
 /* ── CONFIG ── */
 const SUPABASE_URL = 'https://difumwahbazkoglmtnon.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ZXMHYB4buYuBFLaboNmECA_zA34o6pI';
+
+// Guard: verificar que la libreria de Supabase cargo antes de usarla
+if (typeof window.supabase === 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const loading = document.getElementById('loadingState');
+    if (loading) {
+      loading.innerHTML = `
+        <div style="text-align:center;max-width:400px;margin:0 auto;padding:40px;">
+          <div style="font-size:2rem;margin-bottom:16px;">⚠️</div>
+          <h3 style="color:var(--red);margin-bottom:8px;">No se pudo cargar Supabase</h3>
+          <p style="color:var(--muted)">
+            Es probable que un ad-blocker o extension de navegador esté bloqueando
+            la librería de Supabase. Intentá desactivarlas para este sitio o probá
+            con otro navegador.
+          </p>
+          <p style="color:var(--muted2);font-size:.75rem;margin-top:16px;">
+            Error: window.supabase is undefined
+          </p>
+        </div>
+      `;
+    }
+  });
+  throw new Error('Supabase library not loaded. Aborting app.');
+}
+
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ── STATE ── */

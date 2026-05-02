@@ -7,11 +7,11 @@
     body { font-family: monospace; padding: 20px; background: #080e1a; color: #e2e8f0; line-height: 1.6; }
     .ok { color: #00ff88; }
     .err { color: #ef4444; }
-    .warn { color: #f59e0b; }
     pre { background: #111d33; padding: 10px; border-radius: 6px; overflow: auto; font-size: 12px; }
-    #log { max-height: 400px; overflow-y: auto; }
+    #log { max-height: 300px; overflow-y: auto; }
     .log-line { margin: 2px 0; padding: 2px 0; border-bottom: 1px solid #1e2d47; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <h2>Test de conexion a Supabase</h2>
@@ -27,42 +27,34 @@
       div.appendChild(line);
     }
 
-    window.onerror = function(msg, url, line) {
-      log('ERROR GLOBAL: ' + msg + ' (linea ' + line + ')', 'err');
-    };
-
     log('Script iniciado');
     log('window.supabase existe? ' + (typeof window.supabase !== 'undefined'));
 
     if (typeof window.supabase === 'undefined') {
-      log('ERROR: La libreria de Supabase no cargo. Verificar conexion a internet / CDN bloqueado.', 'err');
+      log('ERROR: La libreria de Supabase no cargo.', 'err');
+      document.getElementById('result').textContent = 'FAIL: window.supabase is undefined. Verificar ad-blockers o conexion a internet.';
     } else {
-      log('Supabase library OK, version: ' + (window.supabase.VERSION || 'unknown'));
-
+      log('Supabase library OK', 'ok');
       try {
-        const SUPABASE_URL = 'https://difumwahbazkoglmtnon.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_ZXMHYB4buYuBFLaboNmECA_zA34o6pI';
-        log('Creando cliente...');
-        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const client = window.supabase.createClient(
+          'https://difumwahbazkoglmtnon.supabase.co',
+          'sb_publishable_ZXMHYB4buYuBFLaboNmECA_zA34o6pI'
+        );
         log('Cliente creado OK');
-
-        log('Ejecutando query SELECT * FROM stocks LIMIT 3...');
+        log('Ejecutando query...');
         client.from('stocks').select('*').limit(3).then(({data, error}) => {
           if (error) {
             log('Query ERROR: ' + error.message, 'err');
             document.getElementById('result').textContent = JSON.stringify(error, null, 2);
           } else {
-            log('Query OK, filas devueltas: ' + (data ? data.length : 0), 'ok');
+            log('Query OK, filas: ' + (data ? data.length : 0), 'ok');
             document.getElementById('result').textContent = JSON.stringify(data, null, 2);
           }
-        }).catch(err => {
-          log('Promise catch: ' + err.message, 'err');
         });
       } catch (e) {
         log('EXCEPTION: ' + e.message, 'err');
       }
     }
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onload="log('CDN script loaded')" onerror="log('CDN script FAILED to load', 'err')"></script>
 </body>
 </html>
