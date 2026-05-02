@@ -175,6 +175,7 @@ async function fetchStocks() {
     query = query.range(from, to);
 
     const { data, count, error } = await query;
+    console.log('DEBUG Supabase response:', { dataLength: data ? data.length : 0, count, error });
     if (error) throw error;
     
     state.total = count || 0;
@@ -182,6 +183,7 @@ async function fetchStocks() {
     renderPagination(Math.ceil(state.total / state.perPage));
     document.getElementById('totalCount').textContent = state.total.toLocaleString();
   } catch (e) {
+    console.error('DEBUG Supabase error:', e);
     showToast('Supabase error: ' + e.message, 'error');
   } finally {
     document.getElementById('loadingState').style.display = 'none';
