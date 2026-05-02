@@ -149,7 +149,8 @@ async function fetchStocks() {
   document.getElementById('screenerTable').style.display = 'none';
 
   try {
-    let query = supabase.from('stocks').select('*', { count: 'exact' });
+    let query = supabase.from('stocks').select('*', { count: 'exact' })
+      .not.is('nombre', null);   // Solo mostrar empresas con datos cargados
 
     const f = state.filters;
     if (f.minCap)        query = query.gte('market_cap', f.minCap * 1e6);
